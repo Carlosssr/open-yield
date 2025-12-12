@@ -1,49 +1,136 @@
-README Introduction
+<h1>OpenYield</h1>
 
-OpenYield is a non-custodial savings and borrowing dashboard built on the Aave Protocol (v4). It allows users to supply assets and earn interest, or borrow against their crypto collateral, all from a single unified interface. The project is designed as a developer portfolio piece, showcasing a full-stack dApp using Aave’s latest tools. OpenYield supports multiple Ethereum Layer-1 and Layer-2 networks, letting users seamlessly manage their positions across Ethereum, Arbitrum, Optimism, and Base. All operations are non-custodial – users remain in control of their funds via their own Web3 wallet.
+<h2>Introduction</h2>
+<p>
+  <strong>OpenYield</strong> is a non-custodial savings and borrowing dashboard built on the
+  <strong>Aave Protocol (v4)</strong>. It allows users to supply assets and earn interest,
+  or borrow against their crypto collateral, all from a single unified interface.
+</p>
 
-Features
+<p>
+  The project is designed as a <strong>developer portfolio piece</strong>, showcasing a
+  full-stack dApp using Aave’s latest tools. OpenYield supports multiple Ethereum
+  Layer-1 and Layer-2 networks, letting users seamlessly manage their positions across
+  <strong>Ethereum, Arbitrum, Optimism, and Base</strong>.
+</p>
 
-Supply & Earn: Deposit popular assets (e.g., USDC, DAI, ETH, WBTC) into Aave v4 markets to earn variable interest. View accrued interest and withdraw your assets anytime.
+<p>
+  All operations are fully non-custodial — users remain in control of their funds via
+  their own Web3 wallet.
+</p>
 
-Borrow Against Collateral: Borrow assets by using your supplied assets as collateral. OpenYield provides a guided borrow flow, showing your borrowing power and current interest rates.
+<hr />
 
-Multi-Chain Support: Easily switch between networks like Ethereum, Arbitrum, Optimism, and Base. The UI and data update to reflect the selected network’s markets and your positions on that chain.
+<h2>Features</h2>
 
-Real-Time Health Factor: Visual indicator of your account’s health factor (borrow risk). The dashboard updates your health factor in real time and provides alerts if it falls to risky levels, helping you avoid liquidations.
+<h3>Supply &amp; Earn</h3>
+<p>
+  Deposit popular assets such as <strong>USDC, DAI, ETH, and WBTC</strong> into Aave v4
+  markets to earn variable interest. View accrued interest in real time and withdraw
+  your assets at any time.
+</p>
 
-Permit One-Click Deposits: For supported tokens, OpenYield uses permit (EIP-2612) signatures to let you deposit or repay in one step, without requiring a separate token approval transaction aave.com .
+<h3>Borrow Against Collateral</h3>
+<p>
+  Borrow supported assets using your supplied assets as collateral. OpenYield provides
+  a guided borrowing flow that clearly shows your borrowing power and current interest
+  rates.
+</p>
 
-Responsive UI: Built with TailwindCSS, the app is mobile-friendly and adapts to different screen sizes. The design emphasizes clarity, with dark and light mode support for comfortable viewing.
+<h3>Multi-Chain Support</h3>
+<p>
+  Seamlessly switch between networks including <strong>Ethereum, Arbitrum, Optimism,
+  and Base</strong>. The UI and data automatically update to reflect the selected
+  network’s markets and your positions on that chain.
+</p>
 
-Wallet Connection: Connect with MetaMask or any WalletConnect-compatible wallet via wagmi. Your wallet is used to sign transactions directly – no accounts or logins needed.
+<h3>Real-Time Health Factor</h3>
+<p>
+  A visual indicator of your account’s health factor (borrow risk). The dashboard updates
+  in real time and provides alerts if your health factor approaches risky levels, helping
+  you avoid liquidations.
+</p>
 
-Safe Testnet Mode: OpenYield can run on testnet configurations (such as Ethereum Goerli or other Aave test deployments) for development and testing purposes, so you can experiment without risking real funds.
+<h3>Permit One-Click Deposits</h3>
+<p>
+  For supported tokens, OpenYield uses <strong>EIP-2612 permit signatures</strong> to
+  enable one-click deposits and repayments, removing the need for separate approval
+  transactions.
+</p>
 
-Tech Stack
+<h3>Responsive UI</h3>
+<p>
+  Built with <strong>TailwindCSS</strong>, OpenYield is fully responsive and optimized for
+  mobile and desktop use. The interface supports both dark and light modes for improved
+  usability.
+</p>
 
-Frontend: React + TypeScript. The project was bootstrapped with a modern React toolkit (e.g., Vite or Create React App) and uses functional components with hooks.
+<h3>Wallet Connection</h3>
+<p>
+  Connect via <strong>MetaMask</strong> or any WalletConnect-compatible wallet using
+  <strong>wagmi</strong>. Transactions are signed directly from your wallet — no accounts
+  or logins required.
+</p>
 
-Aave Protocol v4: All lending and borrowing functionality is powered by Aave v4 smart contracts. Business logic is handled via AaveKit React hooks, which abstract direct contract interactions.
+<h3>Safe Testnet Mode</h3>
+<p>
+  OpenYield can run on testnet configurations (such as Ethereum Goerli or other Aave test
+  deployments), allowing developers to experiment without risking real funds.
+</p>
 
-AaveKit React SDK: The app leverages the official AaveKit React v4 library aave.com for a seamless integration. This provides type-safe React hooks for fetching data (markets, user positions) and performing transactions (supply, borrow, etc.) aave.com .
+<hr />
 
-Blockchain Connectivity: Uses wagmi (with viem under the hood) for wallet connections and signing. Wagmi’s React hooks manage the Ethereum provider, network switching, and account data, while viem provides fast, reliable JSON-RPC calls.
+<h2>Tech Stack</h2>
 
-UI Styling: TailwindCSS is used for rapid UI development and consistent design. Components are styled with utility classes, and a custom Tailwind theme provides Aave-inspired colors (e.g., leveraging blues/purples for brand feel and red/yellow/green for health factor statuses).
+<ul>
+  <li><strong>Frontend:</strong> React + TypeScript, using modern React tooling (Vite or CRA).</li>
+  <li><strong>Aave Protocol v4:</strong> Core lending and borrowing logic via Aave v4 smart contracts.</li>
+  <li><strong>AaveKit React SDK:</strong> Type-safe React hooks for market data and transactions.</li>
+  <li><strong>Blockchain Connectivity:</strong> wagmi + viem for wallet connections, network switching, and RPC calls.</li>
+  <li><strong>UI Styling:</strong> TailwindCSS with an Aave-inspired custom theme.</li>
+  <li><strong>State Management:</strong> React Context and hooks; global state handled via wagmi and AaveProvider.</li>
+  <li><strong>Build &amp; Tooling:</strong> TypeScript, Vite (or CRA), ESLint, Prettier, and optional Jest / React Testing Library.</li>
+</ul>
 
-State Management: React’s built-in state and context (no heavy state libraries needed). AaveProvider from AaveKit wraps the app to provide context. Global app state (selected network, connected account) is largely handled by wagmi and React Context.
+<hr />
 
-Build & Tooling: TypeScript for type safety. Vite (or CRA) for development server and building. Eslint and Prettier for code quality, and possibly Jest or React Testing Library for basic testing of components and hooks.
+<h2>Setup &amp; Installation</h2>
 
-Setup & Installation
+<h3>Clone the Repository</h3>
+<pre><code>git clone https://github.com/Carlosssr/open-yield.git</code></pre>
 
-Clone the Repository: git clone https://github.com/yourusername/openyield.git (Replace with actual repo link when available.)
+<h3>Install Dependencies</h3>
+<pre><code>cd open-yield
+npm install</code></pre>
 
-Install Dependencies: cd openyield && npm install This will install React, AaveKit, wagmi, Tailwind, and other dependencies.
+<p>
+  This installs React, AaveKit, wagmi, TailwindCSS, and all required dependencies.
+</p>
 
-Configure Environment: By default, OpenYield connects to Ethereum mainnet and other production networks. You can create a .env file to set RPC URLs or API keys (for providers like Alchemy/Infura) if needed. For example, you might set VITE_ETH_RPC_URL, VITE_ARB_RPC_URL, etc., or use default public RPC endpoints.
+<h3>Configure Environment</h3>
+<p>
+  By default, OpenYield connects to Ethereum mainnet and other production networks.
+  Optionally, create a <code>.env</code> file to configure RPC URLs or API keys
+  (Alchemy, Infura, etc.).
+</p>
 
-Run the App: npm run dev (for Vite) or npm start (for CRA). This will start the development server at http://localhost:3000. The app will prompt you to connect a wallet. For testing on a testnet, connect a wallet configured for that test network. Ensure the Aave v4 deployment exists on that network (for instance, if testing on Goerli, you may need Aave’s test deployment addresses).
+<pre><code>VITE_ETH_RPC_URL=
+VITE_ARB_RPC_URL=
+VITE_OP_RPC_URL=
+VITE_BASE_RPC_URL=</code></pre>
 
-Build for Production: npm run build will bundle the app for production. You can then deploy the static files to a hosting service of your choice (e.g., Vercel, Netlify, GitHub Pages).
+<h3>Run the App</h3>
+<pre><code>npm run dev</code></pre>
+
+<p>
+  The development server will start at <code>http://localhost:3000</code>. Connect a
+  Web3 wallet to begin interacting with the app.
+</p>
+
+<h3>Build for Production</h3>
+<pre><code>npm run build</code></pre>
+
+<p>
+  The production build can be deployed to services such as <strong>Vercel</strong>,
+  <strong>Netlify</strong>, or <strong>GitHub Pages</strong>.
+</p>
