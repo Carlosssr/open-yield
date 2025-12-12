@@ -1,0 +1,382 @@
+OpenYield Project Blueprint
+UI Layout Plan
+
+OpenYield’s interface is structured into clear sections to facilitate lending and borrowing across multiple chains. Each screen and component is designed with user experience and clarity in mind, using TailwindCSS for a clean, responsive UI. Below is an outline of the key screens and UI components:
+
+Homepage
+
+Overview Dashboard: Landing page showing a summary of the user’s portfolio. If the wallet is not connected, it prompts the user to connect their wallet (via wagmi) and select a network. Once connected, it displays total supplied assets, total borrowed assets, net APY, and current health factor.
+
+Call to Actions: Clear entry points to the supply and borrow features. For example, buttons like “Deposit Assets” and “Borrow Assets” guide users to the respective flows. These may be accompanied by brief explanations of what each does (e.g., “earn interest by supplying assets” or “borrow against your collateral”).
+
+Cross-Chain Summary: Since multiple chains are supported, the homepage can either aggregate high-level info across networks or default to a primary network. A network switcher (see Network Selector below) might be present here as well, so users know which chain’s data they are viewing. If applicable, the homepage could show a banner or indicator of the current network (Ethereum, Arbitrum, etc.).
+
+Supply Dashboard
+
+Asset List: A dashboard listing popular assets (USDC, DAI, ETH, WBTC, etc.) available for supply on the selected network. Each row shows asset name, current supply APY, and user’s supplied balance (if any). The list is fetched via AaveKit’s hooks (e.g., a hook to get reserves/markets data for the chain)
+aave.com
+.
+
+Deposit Action: Each asset row has a “Supply” or “Deposit” button. Clicking it opens a supply modal or page where the user can enter an amount to deposit. The UI uses TailwindCSS to create input sliders or fields and displays the user’s wallet balance for that asset.
+
+User’s Supply Positions: The dashboard also highlights the user’s current supply positions. For each asset supplied, show the amount deposited and earned interest. If an asset is being used as collateral, indicate it (e.g., a checkmark or label “Collateral Enabled”). The user may toggle collateral usage on or off for each asset (advanced feature), with warnings if disabling collateral could reduce the health factor.
+
+Analytics and Feedback: When the user inputs an amount to deposit, the UI may show the expected aToken yield or any changes (though supply doesn’t directly change health factor except providing more collateral). After confirming a deposit, a success message or updated balance appears on the dashboard.
+
+Borrow Flow
+
+Borrowable Assets List: A screen or modal where users can view assets available to borrow against their collateral. This list can be filtered to only show assets that the user is eligible to borrow (based on their supplied collateral on the current network). For each asset, show borrow APY and the user’s current borrowed amount (if any).
+
+Borrow Form: When a user selects an asset to borrow, a form is presented to input the borrow amount. The UI should display the user’s current borrowing power and how much they can safely borrow. As the user enters an amount, health factor visualization (see below) updates to show the projected post-borrow health factor. AaveKit’s preview hook can be used to simulate the effect of the borrow before execution (e.g., show “Health Factor will drop from 2.5 to 1.8”)
+aave.com
+aave.com
+.
+
+Confirm Borrow: Upon clicking “Borrow,” a transaction modal appears (see Transaction Modals) to confirm the action. The app uses AaveKit’s useBorrow transaction hook under the hood, which prepares the borrow operation. If the token to be borrowed requires an initial approval or permit, the hook will handle it via the provided plan (e.g., it might prompt a permit signature or an approval transaction)
+aave.com
+.
+
+Post-Transaction Update: After borrowing, the UI updates the dashboard: the borrowed asset now appears in the user’s borrow list, and the health factor is recalculated. The borrow screen might also show a tip or warning if the new health factor is low (e.g., “Your health factor is now 1.2. This is close to the liquidation threshold – consider supplying more collateral or repaying debt.”).
+
+Repay & Withdraw Flow
+
+Repay Borrowed Assets: For each asset the user has borrowed, the interface provides a “Repay” option. Clicking “Repay” opens a modal to input the amount to repay (with a max button to repay all). The UI shows the user’s wallet balance of that asset and the outstanding debt. As with borrowing, entering a repay amount can update the projected health factor (repaying will increase the health factor, indicating a safer position).
+
+Withdraw Supplied Assets: Similarly, for each asset the user has supplied, a “Withdraw” option is available. The withdraw modal lets the user specify an amount to remove from their deposits. It shows the maximum available to withdraw (which might be limited if the asset is being used as collateral for an active loan). Withdrawing collateral will decrease the health factor if that collateral was supporting a loan, so the UI should warn the user by showing the potential health factor drop in the preview.
+
+Input Validations: Both repay and withdraw forms include validations – e.g., you cannot withdraw an amount that would bring health factor below 1 (the app can disable or warn on such actions). They also enforce minimum transactions as per Aave rules (for example, if dust limits exist).
+
+Process & Confirmation: When the user confirms a repay or withdraw, the transaction modal pops up for confirmation. AaveKit’s useRepay and useWithdraw hooks are used to create these transactions
+aave.com
+, ensuring proper calls to the Aave v4 contracts. After completion, the UI updates the supply dashboard and borrow list accordingly (lower debt, reduced collateral, updated interest accrued, etc.).
+
+Network & Asset Selector
+
+Network Selector: A UI component (likely in the header or a top nav bar) that allows the user to switch between supported networks (Ethereum, Arbitrum, Optimism, Base). This leverages wagmi’s network switching (prompting the wallet if a network change is needed). The selector shows the currently active network and dropdown options for others. On change, the app re-initializes AaveKit to the selected chain’s context or uses a single multi-chain client if supported. Using AaveKit’s useChains hook, the app can programmatically fetch the list of chains it supports
+aave.com
+, ensuring we only show networks where Aave v4 is available.
+
+Asset Selector: In deposit/borrow modals, an asset selector dropdown may be present if the user needs to choose an asset. For example, a unified “Borrow” button on the dashboard might first ask which asset to borrow. The asset selector lists tokens (with icons) available on the current network. It may be searchable for convenience. Since the scope of assets is limited to popular ones in this project, the list is concise (USDC, DAI, ETH, WBTC).
+
+Sync with AaveKit Data: Both selectors are populated dynamically. The network selector can use a static list of the four targeted networks or query AaveKit for supported networks data (which could include chain IDs, names, and perhaps RPC endpoints). The asset selector can use the reserves list from AaveKit for the current network to ensure we only list tokens that Aave supports on that chain.
+
+Transaction Modals
+
+Confirmation Dialog: Any supply, borrow, repay, or withdraw action triggers a transaction confirmation modal. This modal summarizes the action (e.g., “You are about to deposit 100 DAI into Aave on Ethereum.”) including key details like amount, asset, network, and an estimation of gas fees. The user must confirm this step, which then triggers the blockchain transaction via wagmi.
+
+Signing and Mining States: Once the user confirms, the modal updates to a “waiting” state. It will instruct the user to sign the transaction in their wallet (MetaMask or others). After signing, it indicates the transaction is pending on-chain (showing a spinner and the transaction hash or a link to a block explorer).
+
+Result Feedback: On success, the modal shows a success message (“Deposit successful!”) and perhaps a green check icon. It may provide the option to view on Etherscan (with a link). On failure, an error message is displayed with details. The modal can be dismissed after completion or error. Throughout this flow, the state is managed by AaveKit’s transaction hooks and wagmi. For example, using useSendTransaction from AaveKit (integrated with viem’s WalletClient) handles sending the raw transaction and provides a Result object to indicate success or error
+aave.com
+.
+
+Permit Handling: If the user opts to use permit for approval (see Permit Support below), the modal flow might first request a signature for the permit. In that case, the text would explain that a signature is needed to authorize the token transfer. After the permit is signed, the modal seamlessly proceeds to submit the combined transaction. This all happens in one “Confirm” sequence from the user’s perspective, improving UX by not having multiple pop-ups.
+
+Health Factor Visualization
+
+Indicator Component: A visual indicator (e.g., a colored bar or dial) that represents the user’s health factor, updated in real time. This component is typically shown on any page where the user’s borrowing power is relevant – likely on the homepage dashboard and the supply/borrow screens. For instance, a simple approach is a progress bar: green when health factor is high (safe), turning yellow as it approaches risky levels, and red when dangerously low.
+
+Numeric Display: Next to or on the indicator, display the numeric value of the health factor (e.g., “Health Factor: 2.3”). If the user has no active borrows, this might read “N/A” or simply not be shown (since health factor is only defined when you have borrowed funds).
+
+Contextual Cues: To help users, the UI can label the health factor’s status (e.g., “Safe” if HF > 2, “Stable” if between 1.5–2, “At Risk” if < 1.5). Since liquidation happens at HF < 1
+aave.com
+, the visualization can mark that threshold clearly (perhaps a line on a gauge indicating “Liquidation at 1.0”). This teaches users that staying well above 1 is important.
+
+Dynamic Updates: OpenYield uses AaveKit to fetch the user’s position data, which includes collateral and debt values needed to compute the health factor. Whenever the user performs an action (supply/borrow/repay/withdraw), the health factor component updates (AaveKit’s hooks refresh the data after transactions). Additionally, the app could periodically refresh data from the blockchain to catch health factor changes due to price fluctuations. The component will highlight changes — for example, if the health factor drops after a market move, it could flash or show an alert (see Risk Alerts below).
+
+Permit Support
+
+Seamless Token Approval: OpenYield integrates permit (EIP-2612) support for ERC-20 tokens that offer it (like DAI, and others)
+aave.com
+. Instead of making users manually send an ERC-20 approval transaction before depositing or repaying, the app will detect if permit is available and use it for a one-step process.
+
+UX Flow: If the user chooses to deposit or repay an asset that supports permits, the UI will indicate a “Use permit to save one transaction” option (this might be a checkbox or simply the default behavior). When the user confirms the action, they will first be prompted to sign a message (this is the permit signature). No gas is required for this signature. Immediately after, the app uses the signed permit to execute the supply/repay transaction in a single on-chain call. From the user’s perspective, it feels like one transaction (with one wallet signature and one on-chain confirmation)
+aave.com
+.
+
+Integration in Hooks: Under the hood, AaveKit’s hooks manage permit logic. For example, the useSupply hook can return an ApprovalRequired plan if an approval is needed
+aave.com
+. If permit is supported, our implementation will instead call useERC20Permit (from the AaveKit viem integration) to get a permit signature and include it in the supply transaction
+aave.com
+. This means the user’s intent (depositing assets) is fulfilled without a separate approval transaction. The README’s AaveKit usage section will detail how this is done, but in essence OpenYield uses the AaveKit React hooks to simplify permit handling.
+
+Fallbacks: If a token does not support permit (e.g., older tokens or certain bridged assets), the app will fall back to the standard two-step process (prompt the user first to approve the token spending, then to confirm the supply/repay). The UI will inform the user in such cases (for instance, showing “Step 1 of 2: Approve token” followed by “Step 2 of 2: Confirm deposit” in the transaction modal). By supporting permit where possible, OpenYield demonstrates a more advanced and user-friendly integration.
+
+README
+Introduction
+
+OpenYield is a non-custodial savings and borrowing dashboard built on the Aave Protocol (v4). It allows users to supply assets and earn interest, or borrow against their crypto collateral, all from a single unified interface. The project is designed as a developer portfolio piece, showcasing a full-stack dApp using Aave’s latest tools. OpenYield supports multiple Ethereum Layer-1 and Layer-2 networks, letting users seamlessly manage their positions across Ethereum, Arbitrum, Optimism, and Base. All operations are non-custodial – users remain in control of their funds via their own Web3 wallet.
+
+Features
+
+Supply & Earn: Deposit popular assets (e.g., USDC, DAI, ETH, WBTC) into Aave v4 markets to earn variable interest. View accrued interest and withdraw your assets anytime.
+
+Borrow Against Collateral: Borrow assets by using your supplied assets as collateral. OpenYield provides a guided borrow flow, showing your borrowing power and current interest rates.
+
+Multi-Chain Support: Easily switch between networks like Ethereum, Arbitrum, Optimism, and Base. The UI and data update to reflect the selected network’s markets and your positions on that chain.
+
+Real-Time Health Factor: Visual indicator of your account’s health factor (borrow risk). The dashboard updates your health factor in real time and provides alerts if it falls to risky levels, helping you avoid liquidations.
+
+Permit One-Click Deposits: For supported tokens, OpenYield uses permit (EIP-2612) signatures to let you deposit or repay in one step, without requiring a separate token approval transaction
+aave.com
+.
+
+Responsive UI: Built with TailwindCSS, the app is mobile-friendly and adapts to different screen sizes. The design emphasizes clarity, with dark and light mode support for comfortable viewing.
+
+Wallet Connection: Connect with MetaMask or any WalletConnect-compatible wallet via wagmi. Your wallet is used to sign transactions directly – no accounts or logins needed.
+
+Safe Testnet Mode: OpenYield can run on testnet configurations (such as Ethereum Goerli or other Aave test deployments) for development and testing purposes, so you can experiment without risking real funds.
+
+Tech Stack
+
+Frontend: React + TypeScript. The project was bootstrapped with a modern React toolkit (e.g., Vite or Create React App) and uses functional components with hooks.
+
+Aave Protocol v4: All lending and borrowing functionality is powered by Aave v4 smart contracts. Business logic is handled via AaveKit React hooks, which abstract direct contract interactions.
+
+AaveKit React SDK: The app leverages the official AaveKit React v4 library
+aave.com
+ for a seamless integration. This provides type-safe React hooks for fetching data (markets, user positions) and performing transactions (supply, borrow, etc.)
+aave.com
+.
+
+Blockchain Connectivity: Uses wagmi (with viem under the hood) for wallet connections and signing. Wagmi’s React hooks manage the Ethereum provider, network switching, and account data, while viem provides fast, reliable JSON-RPC calls.
+
+UI Styling: TailwindCSS is used for rapid UI development and consistent design. Components are styled with utility classes, and a custom Tailwind theme provides Aave-inspired colors (e.g., leveraging blues/purples for brand feel and red/yellow/green for health factor statuses).
+
+State Management: React’s built-in state and context (no heavy state libraries needed). AaveProvider from AaveKit wraps the app to provide context. Global app state (selected network, connected account) is largely handled by wagmi and React Context.
+
+Build & Tooling: TypeScript for type safety. Vite (or CRA) for development server and building. Eslint and Prettier for code quality, and possibly Jest or React Testing Library for basic testing of components and hooks.
+
+Setup & Installation
+
+Clone the Repository: git clone https://github.com/yourusername/openyield.git
+(Replace with actual repo link when available.)
+
+Install Dependencies: cd openyield && npm install
+This will install React, AaveKit, wagmi, Tailwind, and other dependencies.
+
+Configure Environment: By default, OpenYield connects to Ethereum mainnet and other production networks. You can create a .env file to set RPC URLs or API keys (for providers like Alchemy/Infura) if needed. For example, you might set VITE_ETH_RPC_URL, VITE_ARB_RPC_URL, etc., or use default public RPC endpoints.
+
+Run the App: npm run dev (for Vite) or npm start (for CRA). This will start the development server at http://localhost:3000.
+The app will prompt you to connect a wallet. For testing on a testnet, connect a wallet configured for that test network. Ensure the Aave v4 deployment exists on that network (for instance, if testing on Goerli, you may need Aave’s test deployment addresses).
+
+Build for Production: npm run build will bundle the app for production. You can then deploy the static files to a hosting service of your choice (e.g., Vercel, Netlify, GitHub Pages).
+
+Architecture Notes
+
+The project is organized for clarity and modularity:
+
+Component Structure: Components are divided by feature. For example, components/PortfolioSummary.tsx might handle the homepage summary, components/SupplyList.tsx for the supply dashboard list, components/BorrowModal.tsx for the borrowing form, etc. Each major section of the UI (as described in the layout plan) has its own component or set of components.
+
+State and Context: We rely on AaveKit’s context (AaveProvider) and wagmi’s context (WagmiConfig) at the top level (in App.tsx). This means child components can use hooks like useAccount (wagmi) or AaveKit hooks without drilling props. The selected network is managed by wagmi’s provider network state; changing networks via wagmi automatically updates AaveKit’s data queries (as the AaveClient is configured to the active chain).
+
+AaveKit Integration: The AaveClient is initialized on app startup (see src/client.ts) and passed into AaveProvider
+aave.com
+aave.com
+. The client is configured with default settings to fetch Aave v4 data from the blockchain (or Aave’s APIs if applicable). We did not have to manually specify contract addresses; AaveKit knows the protocol addresses for supported networks.
+
+Data Flow: The UI uses AaveKit React hooks for all read and write operations. For example, useReserves might be used in the Supply Dashboard to get all reserves (markets) on the current chain, including their APYs and liquidity info. For user-specific data, hooks like useUserSummary or similar (if provided by AaveKit) fetch total collateral, borrows, and health factor. These hooks return data and loading states, which we use to render loading spinners or error messages as needed.
+
+Transaction Handling: For write actions, we utilize AaveKit’s transaction hooks such as useSupply, useBorrow, useWithdraw, and useRepay. These hooks greatly simplify sending transactions to Aave. They return a tuple of [executeFunction, status]. We call the execute function (e.g., supply() returned by useSupply) with the necessary parameters (like amount, asset reserve ID, etc.), and the hook internally handles constructing the transaction. It uses our provided sendTransaction function (wired to wagmi’s wallet client) to actually dispatch the transaction
+aave.com
+aave.com
+. The result is returned as a Result object indicating success or failure, which we then handle (updating UI or catching errors).
+
+Multi-Chain Design: The app treats each network’s markets independently. When a user switches the network selector, all relevant hooks are refetched for that network’s data. We ensure that components unsubscribe or reset between network switches to avoid cross-network data confusion. AaveKit’s useChains hook confirms which chains are available
+aave.com
+, and we have a mapping in the app for human-readable names and icons of each network.
+
+Styling & Theming: TailwindCSS is configured (in tailwind.config.js) with custom colors to match Aave’s aesthetic (e.g., primary purple/blue for highlights, green/yellow/red for success/warning/error states). We utilize Tailwind’s utility classes heavily in JSX for rapid UI building. Components are designed to be responsive; for instance, the asset list might collapse columns on small screens or become swipeable.
+
+AaveKit Usage Breakdown
+
+Using AaveKit React was a core decision for this project, enabling us to build faster and safer:
+
+Hooks for Reading Data: Instead of manually writing ABIs and calling Ethereum RPC, we use AaveKit hooks. For example, useChains() fetches supported networks data
+aave.com
+, useReserves({ chainId }) could fetch the list of asset reserves on a chain, and useUserPositions({ account }) might return all supply/borrow positions for the user. These hooks manage internal caching and update automatically after transactions, which saved us from writing a lot of boilerplate.
+
+Hooks for Transactions: AaveKit provides high-level hooks for operations. We utilized:
+
+useSupply – to handle deposits. This hook prepares either a direct supply transaction or an approval+supply sequence. By providing a callback to handle transaction requests, we integrated it with wagmi’s signer. The hook abstracts details like the Aave Pool contract address and function calls.
+
+useBorrow – for borrowing assets. Similarly, it constructs the borrow transaction and interfaces with our wallet client to send it. We just specify which reserve and amount to borrow.
+
+useWithdraw and useRepay – to withdraw collateral or repay debt. These ensure the correct Aave function calls (withdraw from pool or repay to pool) with proper user address and amount.
+
+All these transaction hooks return a loading state and errors, which we bind to our UI (e.g., to disable buttons while processing and show messages if something goes wrong).
+
+Permit Implementation: We directly used AaveKit’s permit integration. Specifically, the useERC20Permit hook from @aave/react/viem was used to generate permit signatures with wagmi’s wallet client
+aave.com
+. This was plugged into the flow: when useSupply or useRepay indicated an approval was needed for a token that supports permit, we invoke useERC20Permit to get a permit and then proceed with the transaction. AaveKit’s design made this easier by providing a clear point in the process (the ApprovalRequired case in the transaction plan) where we could insert the permit logic.
+
+Error Handling: AaveKit uses a Result pattern for errors
+aave.com
+. We took advantage of this in our code. After executing a transaction hook (e.g., const result = await supply(params)), instead of using try/catch, we check result.isErr(). This yields structured error types like TransactionError or ValidationError, which we map to user-friendly messages. For example, if result.error.name === "ValidationError", we can show “Insufficient balance” if that was the cause
+aave.com
+. This robust error handling improved the reliability of the app.
+
+Performance Considerations: The combination of wagmi + AaveKit (with viem) gives us efficient RPC calls. Viem is known for speed and AaveKit’s hooks only fetch what’s needed. We also use React’s Suspense or loading states from these hooks to ensure the UI isn’t trying to render incomplete data. In critical parts (like health factor calculation), AaveKit provides the values directly so we don’t manually compute them, avoiding any mistakes in formula and staying consistent with Aave’s own calculations.
+
+Resume Bullet Points
+
+Developed a cross-chain DeFi dashboard (OpenYield) using Aave v4’s AaveKit React hooks, enabling lending and borrowing on 4 networks (Ethereum mainnet, Arbitrum, Optimism, Base) through one unified interface. Implemented dynamic network switching and state management to seamlessly handle multi-chain data.
+
+Integrated advanced wallet features with wagmi and viem, including one-click deposit via EIP-2612 permit signatures, which eliminated the need for manual token approvals and reduced user transaction steps by 50%. This enhanced UX while maintaining security
+aave.com
+.
+
+Engineered real-time risk monitoring with a health factor visualization and automated risk alerts. Designed a system to continuously track the account health factor and notify users when their position approached liquidation thresholds, effectively helping users avoid liquidation by prompting timely adjustments.
+
+Implemented Aave v4 supply/borrow flows with robust hooks, leveraging AaveKit’s transaction and data hooks to ensure type-safe and efficient blockchain interactions
+aave.com
+. Built custom React components for deposit/borrow modals, transaction confirmations, and portfolio summaries, resulting in a highly modular and maintainable codebase.
+
+Optimized for readability and collaboration: Structured the project with clear commit history (12 iterative commits from setup to feature completion) and comprehensive documentation. The README and a published case study blog post articulate the project’s architecture and learnings, demonstrating both technical expertise and the ability to communicate complex concepts clearly.
+
+GitHub Commit Plan
+
+Initial Project Setup: Created the React app scaffold (using Vite for fast setup) and integrated TailwindCSS. Added basic project structure and configuration files (Tailwind config, ESLint). Initial commit lays the foundation with a clean README stub and a .gitignore.
+
+Add Dependencies (AaveKit, wagmi, viem): Installed AaveKit React SDK (@aave/react@next), wagmi, viem, and their peer dependencies. Configured wagmi with Ethereum and Layer2 network connectors. Verified that the app can connect to a wallet and detect network changes.
+
+Aave Client & Provider Integration: Initialized AaveClient and wrapped the app in <AaveProvider>
+aave.com
+. Created a context for the AaveKit client. Ensured that the provider is configured for multi-chain support, using default settings to fetch data for Ethereum, Arbitrum, Optimism, and Base. At this stage, confirmed that a simple AaveKit read hook (like useChains) returns data, proving the SDK hookup works.
+
+Global Layout & Network Selector: Built the basic UI layout including a header with network selector and Connect Wallet button. Implemented the NetworkSelector component using wagmi’s useNetwork and switchNetwork for seamless chain switching. Tested switching between networks and ensured the AaveProvider reacts to changes (e.g., re-fetches chain-specific data).
+
+Homepage Dashboard Component: Developed the PortfolioSummary component for the homepage. It uses AaveKit hooks (e.g., to get total supplied and borrowed values for the connected user) and displays these alongside the current health factor. Added conditional rendering: if no wallet connected, show a welcome message and prompt to connect; if connected but no data (no supplies/borrows), encourage the user to start by depositing assets.
+
+Supply Dashboard & Asset List: Implemented the SupplyList component that fetches and lists available assets to supply on the selected network. Used an AaveKit hook to get reserve details (asset symbol, supply APY, liquidity). Each list item shows asset info and a “Supply” button. Styled the list with Tailwind, making it scrollable on small screens. This commit also includes a basic AssetIcon component for a nice UI touch.
+
+Supply Flow (Deposit Modal): Added a SupplyModal component that opens when “Supply” is clicked on an asset. This modal allows input of an amount to deposit. Integrated useSupply hook
+aave.com
+ with wagmi’s signer: on form submit, the hook is called to execute a deposit. Managed states for loading and error during the transaction. After a successful deposit, the modal closes and the supply list & user summary update (thanks to AaveKit auto-refresh on new blocks).
+
+Borrow Flow Implementation: Created a BorrowModal and supporting components for borrowing. Listed borrowable assets (filtered by those marked canBorrow in Aave’s reserves data). When the user selects an asset, the BorrowModal shows current available borrow limit and uses useBorrow to execute the action. Implemented health factor preview: as the user inputs an amount, calculated the hypothetical new health factor (using AaveKit’s preview or manual formula). Included form validation to prevent borrowing that would drop health factor below 1.0.
+
+Repay and Withdraw Flows: Extended the dashboard to show the user’s current borrows and supplies with action buttons. Implemented a RepayModal that uses useRepay and a WithdrawModal using useWithdraw. These modals mirror the structure of the supply/borrow modals: input amount, confirm transaction, and update state. Added checks to disable withdrawing an amount that would jeopardize the health factor. This commit also refined the user position display – e.g., marking collateral usage and showing borrow balances.
+
+Health Factor Component & Risk Alerts: Built the HealthFactorBar component to visualize the user’s health factor. This involved a colored progress bar and numeric display. Included logic to update its color (green/yellow/red) based on thresholds. In this commit, also introduced a RiskAlert system: if health factor falls below a safe threshold (e.g., 1.25), the app triggers a warning banner or modal. The component uses effect hooks to watch the health factor value from AaveKit and conditionally render alerts. Added unit tests for the health factor calculation logic to ensure accuracy.
+
+Permit Signature Support: Enhanced the supply and repay flows to support EIP-2612 permits. In the supply hook callback, handled the ApprovalRequired case by calling useERC20Permit for supported tokens
+aave.com
+. This commit adds UI elements like a checkbox “Use permit for approval” in the deposit modal (default checked for tokens known to support permit). Tested the full flow on test networks with DAI (which supports permit): confirmed that a signature is requested and only one transaction is sent. Updated the README to highlight this feature.
+
+Documentation and Refactoring: Finalized the README with project description, setup instructions, and a features overview. Cleaned up code by refactoring duplicated logic (e.g., combined some modal code into reusable hooks or components for confirmation dialogs). Improved error messages and loading states across the app (added spinners, clarified error text from AaveKit’s results). Tagged the repository with a release. Each commit was kept focused, making the code review process smooth and highlighting the incremental build of functionality.
+
+(Each commit in this plan is crafted to be a small, reviewable chunk, aligning with best practices. The commit messages are descriptive, and each addresses a distinct aspect of the project.)
+
+Advanced Feature: Risk Alerts
+
+To enhance user safety, OpenYield includes a Risk Alert system tied to the user’s health factor. The logic works as follows:
+
+Defining Safe Thresholds: The app sets predefined health factor thresholds to categorize risk levels. For example, any health factor above 1.5 is “safe” (green), between 1.5 and 1.2 is “moderate” (yellow warning), and below 1.2 is “critical” (red alert). These values can be adjusted, but in this blueprint we assume 1.2 as a critical threshold because approaching 1.0 is very risky (at HF < 1.0, the position becomes eligible for liquidation
+aave.com
+).
+
+Monitoring Health Factor: We leverage AaveKit to obtain the user’s current health factor whenever it changes. The health factor is derived from on-chain data (total collateral vs. total borrow). Each time the user executes a transaction (supply/borrow/repay/withdraw), AaveKit’s hooks update the health factor in the state. Additionally, we implement a periodic refresher (say, every few minutes or on a new block event) to catch changes due to market price movements.
+
+Alert Triggers: When the health factor drops below the warning threshold (e.g., 1.5), the UI triggers a non-intrusive warning. This could be an amber-colored banner at the top of the dashboard saying “⚠️ Your health factor is getting low. Consider adding collateral or repaying loans.” If the health factor falls below the critical threshold (1.2), the warning becomes more prominent, e.g., a red banner or modal that might require the user to acknowledge. The idea is to ensure the user is aware of the danger and prompt them to take action.
+
+Implementation Details: The HealthFactorBar component (or a parent RiskAlert component) contains the logic. Using React’s effect hook, it checks the latest health factor value against thresholds whenever it updates. For example:
+
+useEffect(() => {
+  if (!healthFactor) return;
+  if (healthFactor < 1.2) {
+    setAlert({ level: 'critical', message: 'Health factor is critically low! Repay or supply immediately to avoid liquidation.' });
+  } else if (healthFactor < 1.5) {
+    setAlert({ level: 'warning', message: 'Health factor is below 1.5. Monitor your positions closely.' });
+  } else {
+    setAlert(null);
+  }
+}, [healthFactor]);
+
+
+This pseudocode illustrates updating a state that holds the current alert.
+
+User Feedback: If an alert is active, the app displays it conspicuously. For a warning, we might use a yellow toast notification or a banner; for critical, a persistent red banner or even a modal might appear. We ensure this does not block normal usage (except maybe the critical alert might block opening new borrow actions until acknowledged, as a gentle nudge).
+
+Guidance in Alerts: The alert messages include guidance – e.g., “Your health factor is 1.15, which is below the safe threshold. You are at risk of liquidation. Consider repaying some of your debt or depositing more collateral.” Possibly include quick action buttons like “Repay now” or “Supply collateral” that jump the user to those flows.
+
+Testing and Edge Cases: We test the alert logic under various scenarios (using storybook or unit tests for the hook logic). Edge cases include: user has no borrows (health factor is not defined or infinite – in which case no alerts should show); user health factor oscillates around the threshold (we ensure the alert doesn’t spam the user by perhaps adding a slight hysteresis or not immediately clearing until it’s comfortably above threshold). Also, if the user fixes the situation (e.g., repays loan raising HF), the alert will disappear once health factor goes above the threshold again.
+
+This risk alert feature adds an extra layer of user-friendliness and safety, distinguishing OpenYield as not just a dashboard but a smart assistant that helps manage DeFi risk.
+
+Case Study Post
+
+Working Title: “Building OpenYield: A Multi-Chain Aave Dashboard – Lessons Learned and Innovations”
+
+Context
+
+In this section, I would introduce the project motivation and context. OpenYield was conceived as a personal portfolio project to demonstrate my skills in blockchain and frontend development. I’ll explain that with the rise of multi-chain DeFi, I saw an opportunity to create a unified dashboard for Aave v4, allowing users to manage lending/borrowing across Ethereum and Layer-2 networks in one place. Contextual details include my background (e.g., wanting to learn Aave’s new v4 SDK and improve my React skills) and the timeframe (built in late 2025 as part of my exploration into DeFi app development).
+
+Problem
+
+This section outlines the problem or gap that OpenYield addresses. I’ll discuss how managing loans on Aave can be complex across different networks – users have to switch between different UIs or blockchain networks to see their full portfolio. There’s also mention of the friction in current interfaces, such as needing multiple transactions for approvals, and the risk of users not monitoring their health factor closely. The problem statement might be: “How might we create a single, user-friendly interface to supply and borrow assets on multiple chains, while reducing transaction friction and helping users manage risk?” I’ll highlight pain points like fragmentation of DeFi user experience and risk of liquidation due to lack of timely alerts.
+
+Solution
+
+Here I describe how OpenYield solves the above problems. This is essentially a high-level tour of the app’s features. I’ll explain that OpenYield consolidates multi-chain Aave data into one dashboard – the user can switch networks in-app and see all supported markets. I’ll emphasize the one-click deposit with permit feature as a solution to the multi-step transaction problem, and the integrated health factor monitoring and alerts as a solution to the risk management problem. I will also touch on the UI/UX design decisions that make the app approachable (like clear calls to action, use of Tailwind for a clean design). The narrative will position the solution as an improvement over using the raw Aave interface on each network separately.
+
+Challenges
+
+Building OpenYield wasn’t without challenges. In this section, I’ll enumerate a few key challenges and how I tackled them:
+
+Technical Integration: Discuss the learning curve and intricacies of using AaveKit React (a relatively new SDK). For example, figuring out how to properly use the hooks for transactions and dealing with the Aave v4 “spoke and hub” multi-chain model.
+
+Multi-Chain State Management: Ensuring that data refreshes correctly when switching networks. I might mention a specific challenge, like initially the app would show wrong data because I wasn’t resetting some state on network change, and how I fixed it by leveraging wagmi’s hooks and React context correctly.
+
+Permit Implementation: Share how implementing EIP-2612 permit support required careful handling of user signatures and was an advanced feature. Perhaps I encountered issues with certain tokens or had to test on testnets because not all tokens support permit.
+
+UX & Feedback Loops: Ensuring that the user always knows what’s happening during transactions (e.g., handling the asynchronous nature of blockchain transactions). I’ll mention how I used modals and spinners to tackle this, and the challenge of balancing too much information vs. not enough.
+This section highlights problems and the creative or technical solutions applied, showing problem-solving skills.
+
+Design Decisions
+
+Here, I will highlight specific design and architecture decisions made during the project:
+
+Using AaveKit vs. direct contract calls: I’ll explain why I chose AaveKit (for reliability and speed of development, as it provides tested hooks
+aave.com
+). This decision improved development time and reduced bugs.
+
+Selecting wagmi + viem: Discuss how this stack choice provided a better developer experience over older web3 libraries. It made handling multiple chains and the user’s provider easier, which was crucial for the project.
+
+UI/UX choices: For instance, the decision to use TailwindCSS for fast design iteration and maintaining consistent style. Or why I chose a modal-based flow for deposit/borrow (to keep the user in context) instead of navigating to new pages.
+
+Health factor alerts design: Describe the decision to include proactive risk alerts and how I decided on threshold values after researching Aave’s risk parameters. Maybe note that I decided not to implement automated liquidation prevention (which is out of scope) but focused on user alerts.
+
+Responsiveness and Accessibility: I might note choices like ensuring the app works on mobile, and using accessible components (like proper focus management for modals, high-contrast colors for important info).
+This section demonstrates thoughtful decision-making and awareness of alternatives.
+
+What I Learned
+
+This reflective section covers the personal learnings and takeaways from building OpenYield:
+
+Deeper understanding of DeFi protocols: I gained insight into Aave’s mechanics (v4’s improvements, how health factor is calculated, etc.) and how to work with them programmatically.
+
+Working with new tools: I highlight learning AaveKit React, which might have been new and in beta. I also improved my skills with wagmi/viem for multi-chain wallet management.
+
+Balancing UX with security: I learned how important it is to guide the user (through alerts and clear UI) in a financial app, but also to never compromise on security (e.g., the app never holds private keys, transactions are always user-approved).
+
+Testing and reliability: Mention how I learned to test smart contract interactions from the frontend, maybe writing dummy unit tests or using Aave’s test markets, to ensure the app behaves correctly under various scenarios (like network changes, transaction failures).
+
+Project planning: Since I approached this as a structured portfolio project, I learned a lot about breaking down tasks (as seen in the commit plan) and incremental development. This improved my project management and version control practices.
+
+Screenshots
+
+In a visual portfolio post, I would include screenshots or even short GIFs to illustrate key parts of OpenYield. In this outline, I’ll describe what those would be:
+
+Screenshot 1: Dashboard Overview – showing the homepage with a connected wallet on (for example) Ethereum network. The image would highlight total supplied, total borrowed, and a visible health factor gauge. If possible, include the network selector in view and some assets listed.
+
+Screenshot 2: Supply Modal – a shot of the deposit modal open for an asset (e.g., depositing DAI). This would show the form where the user inputs an amount, the permit checkbox, and the confirm button. It demonstrates the UI simplicity for adding collateral.
+
+Screenshot 3: Borrow Process / Alert – perhaps a two-part image or GIF. First part: the borrow modal where a user is about to borrow and the health factor change is indicated (e.g., going from 2.0 to 1.3). Second part: an alert banner that appears after borrowing, warning the user that their health factor is low. Alternatively, this could be a separate screenshot focusing on the red risk alert banner on the dashboard.
+
+Screenshot 4: Mobile View (optional) – to show responsiveness, an image of OpenYield on a mobile screen, with the asset list or dashboard adjusted to a small screen layout.
+Each screenshot will have captions explaining what’s shown, reinforcing points from the text. These visuals make the case study more engaging and prove that the project is real and functional.
+
+Call to Action
+
+Finally, I conclude the blog post with a call to action. I’d invite readers to try out OpenYield themselves (if it’s deployed on a public URL or provide a link to the GitHub repository). I’ll also encourage feedback or collaboration, saying something like: “If you’re interested in DeFi or have ideas to improve OpenYield, feel free to reach out or contribute on GitHub. I built this project to learn and share, and I’d love to discuss it with the community.” This wrap-up thanks the reader for their time and possibly links to my contact info or other portfolio projects. The goal is to end on a note that spurs the reader to take the next step – whether it’s simply reflecting on the content or actually engaging with me or the project.
